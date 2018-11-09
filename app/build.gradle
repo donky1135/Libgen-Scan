@@ -26,5 +26,5 @@ dependencies {
     compile 'com.android.support:support-v4:26.0.1@aar'
     compile 'com.android.support:appcompat-v7:26.0.1@aar'
     compile 'me.dm7.barcodescanner:zbar:1.9.8'
-
+    compile 'org.jsoup:jsoup:1.11.3'
 }
