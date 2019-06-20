@@ -10,6 +10,9 @@ android {
         versionCode 1
         versionName "1.2"
     }
+    repositories {
+        maven { url 'http://repo1.maven.org/maven2' }
+    }
     buildTypes {
         release {
             minifyEnabled false
@@ -18,13 +21,19 @@ android {
     }
     productFlavors {
     }
+    buildToolsVersion = '28.0.3'
 }
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     // testCompile 'junit:junit:4.12'
-    compile 'com.android.support:support-v4:26.0.1@aar'
-    compile 'com.android.support:appcompat-v7:26.0.1@aar'
+    compile 'com.android.support:support-v4:26.1.0@aar'
+    compile 'com.android.support:appcompat-v7:26.1.0@aar'
     compile 'me.dm7.barcodescanner:zbar:1.9.8'
     compile 'org.jsoup:jsoup:1.11.3'
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.12'
 }

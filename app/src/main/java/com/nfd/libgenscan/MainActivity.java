@@ -10,6 +10,8 @@ import android.content.Intent;
 import android.Manifest;
 import android.content.pm.PackageManager;
 
+import java.io.IOException;
+
 
 /* Scanning UI and main menu. This should always be the first thing the user sees on launch.
  * TODO: add history menu, autoscan option, and restore support for pre-Marshmallow if possible
