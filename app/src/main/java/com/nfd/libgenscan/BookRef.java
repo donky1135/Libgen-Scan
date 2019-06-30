@@ -14,9 +14,15 @@ import org.jsoup.select.Elements.*;
 import me.dm7.barcodescanner.zbar.BarcodeFormat;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Environment;
 import android.os.StrictMode;
+import android.widget.Toast;
 
 import java.net.HttpURLConnection;
+import java.util.TreeMap;
+
+import static android.content.Context.DOWNLOAD_SERVICE;
+
 /**
  * @author Alexander Ronsse-Tucherov
  * @version 2016-08-26.
@@ -44,7 +50,7 @@ class BookRef {
         this.parent = parent;
     }
 
-    public boolean isAllowed(BarcodeFormat b) {
+    private boolean isAllowed(BarcodeFormat b) {
         return this.allowedFormats.contains(b);
     }
 
@@ -76,29 +82,52 @@ class BookRef {
 
 
     //TODO: add more libraries, possibly ways of handling other types of barcodes (search by UPC?)
-    public void searchBook(){
+    public String searchBook(){
         opened = true;
-        Document doc = null;
-        String uri ="";
-        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder()
-                .permitAll().build();
+        String uri =null;
+        String md5=null;
+        //Initializing variables
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
+        //Allowing network stuff to not run on the main thread
         try {
-            doc = Jsoup.connect("http://libgen.io/search.php?req=" + id +
+//            Gets the document from libgen for editing
+            Document doc = Jsoup.connect("http://libgen.io/search.php?req=" + id +
                     "&lg_topic=libgen&open=0&view=simple&res=25&phrase=1&column=identifier").get();
-
-        Elements el = doc.select("td").select("tbody").select("tr").select("td");
-        String test = el.first().select("a").attr("href");
-        String md5 = test.substring(test.indexOf("=")+1);
-        uri = "http://libgen.io/get.php?md5=" + md5;
-
+//            System.out.println(id);
+            switch (doc.select("td").select("tbody").select("tr").size()) // This selection gets the number of actual download options as an integer
+            {
+                case 0:
+                    Toast.makeText(null, "ISBN not found, using google books to find it is coming soon",
+                            Toast.LENGTH_LONG).show();
+                    break;
+                case 1:
+                    String test = doc.select("table.c").select("td[width]").select("a").attr("href");
+                    md5 = test.substring(test.indexOf('=')+1); //This is dumb, wanna see how I could get this in one line
+                    //Gets the exact link from the table, and then extracts out the md5 hash from the URL to bypass the mirror selection.  Should probably do this as another
+                    break;
+                default:
+                    TreeMap map = new TreeMap<Integer, String>();
+                    Elements books = doc.select("table.c").select("td[width]");
+                    for (Element i : books){
+                        String fun = i.select("a").attr("href");
+                        map.put(i.attr("id"), fun.substring(fun.indexOf('=')+1));
+                    }
+                    md5 = (String) map.get(map.lastKey());
+                    break;
+            }
+//            Elements el = doc.select("td").select("tbody").select("tr").select("td");
+//            String test = el.first().select("a").attr("href");
+//            String md5 = test.substring(test.indexOf("=")+1);
+            uri = "http://libgen.io/get.php?md5=" + md5;
         } catch (IOException e) {
             e.printStackTrace();
         }
-        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
-        parent.fire(browserIntent);
-
+        return uri;
+//        if (false){
+//        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+//        parent.fire(browserIntent);}
+//        else
+//            dl(uri);
     }
-
-
 }

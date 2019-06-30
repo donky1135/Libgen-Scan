@@ -1,6 +1,10 @@
 package com.nfd.libgenscan;
 
+import android.app.DownloadManager;
+import android.content.Context;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.widget.Toast;
 import android.app.Activity;
 import android.support.v7.app.AppCompatActivity;
@@ -9,6 +13,9 @@ import me.dm7.barcodescanner.zbar.*;
 import android.content.Intent;
 import android.Manifest;
 import android.content.pm.PackageManager;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 import java.io.IOException;
 
@@ -22,7 +29,7 @@ public class MainActivity extends Activity implements ZBarScannerView.ResultHand
     private ZBarScannerView mScannerView;
     private boolean autosearch = true; //TODO: add switching (new Activity, along with menu of bookrefs)
     public static final int PERMISSION_REQUEST_CAMERA = 1;
-
+    public static final int PERMISSION_REQUEST_FILEZ = 2;
 
     //TODO: annotate s.t. < 23 are accepted
     @Override
@@ -31,17 +38,21 @@ public class MainActivity extends Activity implements ZBarScannerView.ResultHand
         mScannerView = new ZBarScannerView(this);    // Programmatically initialize the scanner view
         setContentView(mScannerView);                // Set the scanner view as the content view
 
-
         // Request permission. This does it asynchronously so we have to wait for onRequestPermissionResult before
         // trying to open the camera.
         if (!haveCameraPermission())
             requestPermissions(new String[]{Manifest.permission.CAMERA}, PERMISSION_REQUEST_CAMERA);
+        if (!haveFilePermission())
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_FILEZ);
     }
 
     private boolean haveCameraPermission() {
         if (Build.VERSION.SDK_INT < 23)
             return true;
         return checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+    }
+    private boolean haveFilePermission(){
+        return checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -59,6 +70,14 @@ public class MainActivity extends Activity implements ZBarScannerView.ResultHand
                 }
             }
             break;
+
+//            case PERMISSION_REQUEST_FILEZ:{
+//                if (grantResults[1] == PackageManager.PERMISSION_GRANTED){}
+//                else
+//                    finish();
+//
+//            }
+//            break;
         }
     }
 
@@ -98,10 +117,11 @@ public class MainActivity extends Activity implements ZBarScannerView.ResultHand
 
             //remove; if set to auto-open, immediately call openers before throwing ref out
             // gotta figure out settings activities first
-            if (autosearch) {
-                b.searchBook();
-            }
-
+//            if (autosearch) {
+//                b.searchBook();
+//            }
+            dl(b.searchBook());
+            b.searchBook();
             mScannerView.resumeCameraPreview(this);
 
         } catch (IllegalArgumentException e) {
@@ -111,6 +131,21 @@ public class MainActivity extends Activity implements ZBarScannerView.ResultHand
         }
 
 
+    }
+    public void dl (String uri){
+        try {
+            Document doc = Jsoup.connect(uri).get();
+            String dlLink = doc.select("table#main").select("tbody").select("tr").select("a").attr("href");
+            String fileName = doc.select("table#main").select("tr").select("td").select("input#textarea-example").attr("value");
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(dlLink)).setTitle(fileName).setDescription("getting your book")
+                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            DownloadManager dm = (DownloadManager)getSystemService(DOWNLOAD_SERVICE);
+            dm.enqueue(request);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
