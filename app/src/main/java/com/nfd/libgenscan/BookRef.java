@@ -1,27 +1,20 @@
 package com.nfd.libgenscan;
-import android.app.DownloadManager;
+
+import android.os.StrictMode;
+import android.widget.Toast;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.jsoup.Jsoup;
-import org.jsoup.Connection;
-import org.jsoup.nodes.Element;
-import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
-import org.jsoup.select.Elements.*;
-import me.dm7.barcodescanner.zbar.BarcodeFormat;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.Environment;
-import android.os.StrictMode;
-import android.widget.Toast;
-
-import java.net.HttpURLConnection;
 import java.util.TreeMap;
 
-import static android.content.Context.DOWNLOAD_SERVICE;
+import me.dm7.barcodescanner.zbar.BarcodeFormat;
 
 /**
  * @author Alexander Ronsse-Tucherov
@@ -82,10 +75,12 @@ class BookRef {
 
 
     //TODO: add more libraries, possibly ways of handling other types of barcodes (search by UPC?)
-    public String searchBook(){
+    public String[] searchBook() {
+        long startTime = System.nanoTime();
         opened = true;
-        String uri =null;
+        String uri;
         String md5=null;
+        String[] k = new String[2];
         //Initializing variables
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
@@ -103,15 +98,16 @@ class BookRef {
                     break;
                 case 1:
                     String test = doc.select("table.c").select("td[width]").select("a").attr("href");
-                    md5 = test.substring(test.indexOf('=')+1); //This is dumb, wanna see how I could get this in one line
+                    md5 = test.substring(test.indexOf('=') + 1); //This is dumb, wanna see how I could get this in one line
                     //Gets the exact link from the table, and then extracts out the md5 hash from the URL to bypass the mirror selection.  Should probably do this as another
                     break;
                 default:
                     TreeMap map = new TreeMap<Integer, String>();
                     Elements books = doc.select("table.c").select("td[width]");
-                    for (Element i : books){
+                    for (Element i : books) { //currently haven't thought up a better way to do this, auto sorting via a treemap based on the higher id value, thus making
+                                              //a choice on newest added.  Going to add settings feature so that preference can be made on file extension
                         String fun = i.select("a").attr("href");
-                        map.put(i.attr("id"), fun.substring(fun.indexOf('=')+1));
+                        map.put(i.attr("id"), fun.substring(fun.indexOf('=') + 1));
                     }
                     md5 = (String) map.get(map.lastKey());
                     break;
@@ -120,14 +116,22 @@ class BookRef {
 //            String test = el.first().select("a").attr("href");
 //            String md5 = test.substring(test.indexOf("=")+1);
             uri = "http://libgen.io/get.php?md5=" + md5;
+            // Final parsing of the downloads page
+            Document doc1 = Jsoup.connect(uri).get();
+            String dlLink = doc1.select("table#main").select("tbody").select("tr").select("a").attr("href");
+            String fileName = doc1.select("table#main").select("tr").select("td").select("input#textarea-example").attr("value");
+            k[0] = dlLink;
+            k[1] = fileName;
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return uri;
 //        if (false){
 //        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
 //        parent.fire(browserIntent);}
 //        else
 //            dl(uri);
+        System.out.println("Book ref run time: " + (System.nanoTime()-startTime));
+        return k;
     }
+
 }

@@ -2,10 +2,11 @@ buildscript {
     repositories {
         mavenCentral()
         google()
+        jcenter()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.2.1'
+        classpath 'com.android.tools.build:gradle:3.4.1'
     }
 }
 
@@ -52,6 +53,6 @@ subprojects {
     }
 }
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '2.14'
-}
+//task wrapper(type: Wrapper) {
+//    gradleVersion = '2.14'
+//}

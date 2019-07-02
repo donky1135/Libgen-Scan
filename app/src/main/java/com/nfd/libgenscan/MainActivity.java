@@ -1,29 +1,23 @@
 package com.nfd.libgenscan;
 
-import android.app.DownloadManager;
-import android.content.Context;
-import android.net.Uri;
-import android.os.Build;
-import android.os.Environment;
-import android.widget.Toast;
-import android.app.Activity;
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import me.dm7.barcodescanner.zbar.*;
-import android.content.Intent;
 import android.Manifest;
+import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.SystemClock;
+import android.widget.Toast;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-
-import java.io.IOException;
-
-
+import me.dm7.barcodescanner.zbar.Result;
+import me.dm7.barcodescanner.zbar.ZBarScannerView;
 /* Scanning UI and main menu. This should always be the first thing the user sees on launch.
  * TODO: add history menu, autoscan option, and restore support for pre-Marshmallow if possible
  */
-
+// TODO Need to add settings tab for preferences
 //AppCompatActivity was actually causing crashes?
 public class MainActivity extends Activity implements ZBarScannerView.ResultHandler {
     private ZBarScannerView mScannerView;
@@ -103,49 +97,58 @@ public class MainActivity extends Activity implements ZBarScannerView.ResultHand
     }
 
     //intended to fire URL opener intents from searches
-    void fire(Intent i) {
-        startActivity(i);
-    }
-
+//    void fire(Intent i) {
+//        startActivity(i);
+//    }
+//Currently useless, took out the browser
     @Override
     public void handleResult(Result rawResult) {
-
         try {
-
             BookRef b = new BookRef(rawResult.getContents(), rawResult.getBarcodeFormat(), false, this);
-            BookRef.addToList(b);
-
+            BookRef.addToList(b);  //TODO: have some type of list feature to do mass downloads.  Given current implementation might not be feasible
             //remove; if set to auto-open, immediately call openers before throwing ref out
             // gotta figure out settings activities first
 //            if (autosearch) {
 //                b.searchBook();
 //            }
-            dl(b.searchBook());
-            b.searchBook();
+            new AsyncDl().execute(b); //As said before it was just easiest to pass the object so parsing & downloading got off of the UI thread
             mScannerView.resumeCameraPreview(this);
-
         } catch (IllegalArgumentException e) {
             Toast.makeText(getApplicationContext(), "Barcode format not supported; try another book.",
                     Toast.LENGTH_SHORT).show();
             mScannerView.resumeCameraPreview(this);
         }
 
-
-    }
-    public void dl (String uri){
-        try {
-            Document doc = Jsoup.connect(uri).get();
-            String dlLink = doc.select("table#main").select("tbody").select("tr").select("a").attr("href");
-            String fileName = doc.select("table#main").select("tr").select("td").select("input#textarea-example").attr("value");
-            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(dlLink)).setTitle(fileName).setDescription("getting your book")
-                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
-            DownloadManager dm = (DownloadManager)getSystemService(DOWNLOAD_SERVICE);
-            dm.enqueue(request);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
+    private class AsyncDl extends AsyncTask<BookRef, Void, Void> {
+        protected Void doInBackground(BookRef... params){
+            try {
+                //Sleeping cause don't wanna be a dick to the people running these servers for "free"
+                SystemClock.sleep(1000);
+                //Found it was easiest to offload the web parsing asynchronously by just getting the BookRef object.
+                //Gives me the two strings required, don't know if there is a more efficent way to do this
+                String[] i = params[0].searchBook();
+                String dlLink = i[0];
+                String fileName = i[1];
+                //Generates the download, and all enclosed inside of an asyn class, so you can keep on scanning no matter the downloads
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(dlLink))
+                        .setTitle(fileName)
+                        .setDescription("getting your book")
+                        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                        .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+                DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                dm.enqueue(request);
+            }
+            catch (Exception e){
+                //If for some reason the barcode scanner starts putting out shit, it won't crash
+                System.out.println(e.toString()); //To be clear I'm not the worlds best programmer
+            }
+            return null;
+        }
+        protected void onPostExecute(){}
+        protected void onPreExecute(){}
+        protected void onProgressUpdate(Void... values) {}
+    }
 }
+
